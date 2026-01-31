@@ -1,14 +1,31 @@
 import streamlit as st
-import datetime
+from supabase import create_client
 
-st.title("☀️ 今日の気分ログ")
+# Supabase 接続（Streamlit Secretsから読む）
+url = st.secrets["SUPABASE_URL"]
+key = st.secrets["SUPABASE_KEY"]
+supabase = create_client(url, key)
 
-# 入力フォーム
-date = st.date_input("日付", datetime.date.today())
-mood = st.select_slider("今の気分は？", options=["最悪", "微妙", "普通", "良い", "最高"])
-note = st.text_area("一言メモ")
+st.title("😊 気分記録アプリ（Supabase版）")
+
+mood = st.slider("今の気分（1〜5）", 1, 5, 3)
+memo = st.text_input("ひとことメモ")
 
 if st.button("記録する"):
-    st.balloons()
-    st.success(f"{date} の気分（{mood}）を記録しました！")
-    # 本来はここに保存処理を書きますが、今回は簡易版のため表示のみ
+    supabase.table("moods").insert({
+        "mood_level": mood,
+        "memo": memo
+    }).execute()
+    st.success("記録しました")
+    st.rerun()
+
+st.subheader("これまでの記録")
+
+res = supabase.table("moods").select("*").order(
+    "created_at", desc=True
+).execute()
+
+for row in res.data:
+    st.write(
+        f"{row['created_at'][:16]} | 気分:{row['mood_level']} | {row['memo']}"
+    )
